@@ -6,8 +6,9 @@ class Wall(physicalobject.PhysicalObject):
 	def __init__(self, *args, **kwargs):
 		super(Wall, self).__init__(img=resources.wall_image, *args, **kwargs)
 		
-		self.length = 200
-		self.angle = 0
+		# Tell the game handler about any event handlers
+		self.key_handler = key.KeyStateHandler()
+		self.event_handlers = [self, self.key_handler]
 
 	def update(self, dt):
 		return

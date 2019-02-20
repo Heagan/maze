@@ -2,11 +2,12 @@ import pyglet, math
 from pyglet.window import key
 import resources, physicalobject
 
-sensor_length = 200
+sensor_length = 1000
 
 class Sensor:
 	def __init__(self, angle):
-		self.dir = angle
+		self.dx = math.cos(angle)
+		self.dy = math.sin(angle)
 		self.val = sensor_length
 
 
@@ -21,7 +22,7 @@ class Vehicle(physicalobject.PhysicalObject):
 		self.key_handler = key.KeyStateHandler()
 		self.event_handlers = [self, self.key_handler]
 
-		self.sensorAngle = (math.pi * 2) / 8 
+		self.sensorAngle = (math.pi * 2 * -math.radians(self.rotation)) / 8 
 		self.sensors = []
 
 		angle = 0
@@ -29,15 +30,25 @@ class Vehicle(physicalobject.PhysicalObject):
 			self.sensors.append(Sensor(angle))
 			angle += self.sensorAngle
 
+	def updateSensorAngles(self):
+		if not self.rotation:
+			return
 
+		self.sensorAngle = (math.pi * 2) / 8
+		print(self.rotation)
+		self.sensors = []
+
+		angle = 0
+		while (angle < math.pi * 2):
+			self.sensors.append(Sensor(angle))
+			angle += self.sensorAngle
 
 	def update(self, dt):
 
 		# Do all the normal physics stuff
 		super(Vehicle, self).update(dt)
 
-		for i in self.sensors:
-			i.val = sensor_length
+		self.updateSensorAngles()
 
 		if self.key_handler[key.LEFT]:
 			self.rotation -= self.rotate_speed * dt

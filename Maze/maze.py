@@ -1,5 +1,5 @@
 import pyglet, random, math
-import vehicle, wall
+import vehicle, wall, util
 
 # Set up a window
 game_window = pyglet.window.Window(800, 600)
@@ -13,6 +13,8 @@ game_objects = []
 # every time we reset the level.
 event_stack_size = 0
 
+sensor_length = 1000
+
 def load_map():
 	global game_objects
 
@@ -20,14 +22,14 @@ def load_map():
 	y = 0
 	f = open("resources/map2.map", "r")
 	for s in f.read():
-		x = 0
-		for c in s:
-			print(c)
-			if c == "1":
-				w = wall.Wall(x=x, y=y, batch=main_batch)
-				game_objects += [w]
-			x += 100
-		y += 10
+		if s == '\n':
+			x = -50
+			y += 50
+		if s == "1":
+			w = wall.Wall(x=x, y=y, batch=main_batch)
+			game_objects += [w]
+		x += 50
+	f.close()
 
 
 def init():
@@ -41,7 +43,7 @@ def init():
 		event_stack_size -= 1
 
 	# Initialize the player sprite
-	car = vehicle.Vehicle(x=400, y=300, batch=main_batch)
+	car = vehicle.Vehicle(x=100, y=525, batch=main_batch)
 
 	# Store all objects that update each frame in a list
 	game_objects += [car]
@@ -55,11 +57,40 @@ def init():
 
 @game_window.event
 def on_draw():
+
 	game_window.clear()
 	main_batch.draw()
+	pyglet.gl.glLineWidth(50)
+	for a in car.sensors:
+		x1 = car.x
+		y1 = car.y
+		x2 = car.x + a.dx * a.val
+		y2 = car.y + a.dy * a.val
+		pyglet.graphics.draw(4, pyglet.gl.GL_LINES, ("v2f", (x1, y1, x2, y2, x1, y1, x2, y2)))
 
+
+def updateSensors():
+	global car, sensor_length, game_objects
+
+	for i in car.sensors:
+		i.val = sensor_length
+	for i in range(len(game_objects)):
+		if game_objects[i] == car:
+			continue
+		px = game_objects[i].x
+		py = game_objects[i].y
+		for j in range(len(car.sensors)):
+			dx = car.sensors[j].dx
+			dy = car.sensors[j].dy
+			delta = util.angle({px, py, 1}, {dx, dy, 1})
+			if delta < (math.pi * 2) / 8:
+				dist = util.distance((px, py), (car.x, car.y))
+				car.sensors[j].val = min(car.sensors[j].val, dist)
 
 def update(dt):
+	global car
+
+	updateSensors()
 	player_dead = False
 
 	# To avoid handling collisions twice, we employ nested loops of ranges.
@@ -89,16 +120,9 @@ def update(dt):
 	# Get rid of dead objects
 	for to_remove in [obj for obj in game_objects if obj.dead]:
 		if to_remove == car:
-			player_dead = True
-		# If the dying object spawned any new objects, add those to the 
-		# game_objects list later
-		to_add.extend(to_remove.new_objects)
-
-		# Remove the object from any batches it is a member of
-		to_remove.delete()
-
-		# Remove the object from our list
-		game_objects.remove(to_remove)
+			car.x = 100
+			car.y = 525
+			car.dead = False
 
 	# Add new objects to the list
 	game_objects.extend(to_add)
@@ -107,7 +131,6 @@ def update(dt):
 	if player_dead:
 		# We can just use the length of the player_lives list as the number of lives
 		init()
-
 
 if __name__ == "__main__":
 	# Start it up!
