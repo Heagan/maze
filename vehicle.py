@@ -10,7 +10,7 @@ class Sensor:
 		self.t = 1000
 
 	def collides(self, a=(0,0), b=(0, 0, 0, 0)):
-		
+
 		angle = math.atan2(self.dx, self.dy)
 
 		d = util.intersect(angle, a, b)
@@ -23,8 +23,8 @@ class Sensor:
 class Vehicle(physicalobject.PhysicalObject):
 	def __init__(self, *args, **kwargs):
 		super(Vehicle, self).__init__(img=resources.car_image, *args, **kwargs)
-		
-		self.rotation = 270
+
+		self.rotation = 180
 		self.rotate_speed = 200.0
 		self.speed = 100
 

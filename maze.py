@@ -8,28 +8,33 @@ winy = 600
 
 game_window = pyglet.window.Window(winx, winy)
 main_batch = pyglet.graphics.Batch()
+keyboard = pyglet.window.key.KeyStateHandler()
+game_window.push_handlers(keyboard)
+
 score_label = pyglet.text.Label(text="Score: 0", x=50, y=575, batch=main_batch)
-car = None
-game_objects = []
+
 event_stack_size = 0
-
 walls = []
+car = None
 
-# def load_map():
-# 	global game_objects
-
-# 	x = 0
-# 	y = 0
-# 	f = open("resources/map2.map", "r")
-# 	for s in f.read():
-# 		if s == '\n':
-# 			x = -50
-# 			y += 50
-# 		if s == "1":
-# 			w = wall.Wall(x=x, y=y, batch=main_batch)
-# 			game_objects += [w]
-# 		x += 50
-# 	f.close()
+def load_map():
+	global walls, main_batch
+	
+	x = 0
+	y = 0
+	x1 = 0
+	y1 = 0
+	x2 = 0
+	y2 = 0
+	f = open("resources/map.map", "r")
+	for s in f.read():
+		if s == '\n':
+			x = -50
+			y += 50
+		if s == "1":
+			walls.append(wall.Wall(x - 25, y - 25, x + 25, y + 25, batch=main_batch))
+		x += 50
+	f.close()
 
 
 def setup_map():
@@ -45,25 +50,29 @@ def setup_map():
 	walls.append(wall.Wall(winx - 5, 5, winx - 5, winy - 5))
 
 	# Bot
-	walls.append(wall.Wall(100, 100, winx - 100, 100))
+	walls.append(wall.Wall(100, 100, (winx - 100 ) / 3, 100))
+	walls.append(wall.Wall((winx - 100 ) / 3 + (winx - 100 ) / 3 , 100, winx - 100, 100))
 	# Top
-	walls.append(wall.Wall(100, winy - 100, winx - 100, winy - 100))
+	walls.append(wall.Wall(100, winy - 100, (winx - 100 ) / 3, winy - 100))
+	walls.append(wall.Wall((winx - 100 ) / 3 + (winx - 100 ) / 3, winy - 100, winx - 100, winy - 100))
+	# Mid
+
+	walls.append(wall.Wall((winx - 100 ) / 3, 100, (winx - 100 ) / 3, winy - 100))
+	walls.append(wall.Wall((winx - 100 ) / 3 + (winx - 100 ) / 3, 100, (winx - 100 ) / 3 + (winx - 100 ) / 3, winy - 100))
+
 	# Left
 	walls.append(wall.Wall(100, 100, 100, winy - 100))
 	# Right
 	walls.append(wall.Wall(winx - 100, 100, winx - 100, winy - 100))
 
 
-
-
 def init():
-	global car, game_objects, event_stack_size
+	global car, event_stack_size
 
-	rfr.setup_ml(50)
+	rfr.setup_ml()
 
-	# load_map()
-
-	setup_map()
+	load_map()
+	# setup_map()
 
 	# Clear the event stack of any remaining handlers from other levels
 	while event_stack_size > 0:
@@ -73,75 +82,48 @@ def init():
 	# Initialize the player sprite
 	car = vehicle.Vehicle(x=100, y=555, batch=main_batch)
 
-	# Store all objects that update each frame in a list
-	game_objects += [car]
-
 	# Add any specified event handlers to the event handler stack
-	for obj in game_objects:
-		for handler in obj.event_handlers:
-			game_window.push_handlers(handler)
-			event_stack_size += 1
+	for handler in car.event_handlers:
+		game_window.push_handlers(handler)
+		event_stack_size += 1
 
 
 @game_window.event
 def on_draw():
-	game_window.clear()
-	main_batch.draw()
-
 	global walls, car
+	game_window.clear()
 	pyglet.gl.glLineWidth(2)
 
-	car.intersect(walls)
-	# for s in car.sensor:
-	# 	x1 = car.x
-	# 	y1 = car.y
-	# 	x2 = car.x + s.dx * s.t
-	# 	y2 = car.y + s.dy * s.t
-	# 	pyglet.graphics.draw(4, pyglet.gl.GL_LINES, ("v2f", (x1, y1, x2, y2, x1, y1, x2, y2)))
-	for a in walls:
-		x1 = a.x1
-		y1 = a.y1
-		x2 = a.x2
-		y2 = a.y2
+	for s in car.sensor:
+		x1 = car.x
+		y1 = car.y
+		x2 = car.x + s.dx * s.t
+		y2 = car.y + s.dy * s.t
 		pyglet.graphics.draw(4, pyglet.gl.GL_LINES, ("v2f", (x1, y1, x2, y2, x1, y1, x2, y2)))
+
+	main_batch.draw()
 
 f = open("data.csv", "a")
 csv = []
 ass = []
+
 def update(dt):
-	global car, f, csv, ass
+	global car, f, csv, ass, key_handler
 
 	player_dead = False
-
-	# To avoid handling collisions twice, we employ nested loops of ranges.
-	# This method also avoids the problem of colliding an object with itself.
-	for i in range(len(game_objects)):
-		for j in range(i + 1, len(game_objects)):
-
-			obj_1 = game_objects[i]
-			obj_2 = game_objects[j]
-
-			# Make sure the objects haven't already been killed
-			if not obj_1.dead and not obj_2.dead:
-				if obj_1.collides_with(obj_2):
-					obj_1.handle_collision_with(obj_2)
-					obj_2.handle_collision_with(obj_1)
 
 	# Let's not modify the list while traversing it
 	to_add = []
 
-	for obj in game_objects:
-		obj.update(dt)
+	car.update(dt)
 
-		if obj == car:
-			if car.dead:
-				car.rotation = 0
-				car.x = 100
-				car.y = 525
-				car.dead = False
-		else:
-			obj.distance = util.distance((car.x, car.y), (obj.x, obj.y))
-			score_label.text = "Score :-" + str(game_objects[0].distance)
+	if car.dead:
+		car.rotation = 0
+		car.x = 100
+		car.y = 525
+		car.dead = False
+
+	car.intersect(walls)
 
 	# Write data!
 	# if car.key != 0:
@@ -162,9 +144,17 @@ def update(dt):
 	print("Predicted value: " + str(pv) )
 	car.process(dt, round(pv[0]) )
 
-
-	# Add new objects to the list
-	game_objects.extend(to_add)
+	# car.intersect(walls)
+	# csv = ""
+	# hitWall = False
+	# for s in car.sensor:
+	# 	csv += str(s.t) + ";"
+	# 	if s.t < 50:
+	# 		hitWall = True
+	# 		break
+	# if hitWall == False: 
+	# 	csv += str(round(pv[0])) + "\n"
+	# 	f.write(csv)
 
 	# Check for win/lose conditions
 	if player_dead:

@@ -11,15 +11,16 @@ regressor = None
 
 X = []
 y = []
-
-def setup_ml(cols):
+dataset = []
+def setup_ml():
 	print("Setting up ML")
 
-	global regressor
+	global regressor, X, y, dataset
 
 	dataset = pd.read_csv('data.csv', ';')
-	X = dataset.iloc[:, 1:cols].values
-	y = dataset.iloc[:, cols].values
+	print(8 / (len(dataset.columns) - 1))
+	X = dataset.iloc[:, 1:(len(dataset.columns) - 1):1].values
+	y = dataset.iloc[:, -1].values
 
 	print(X)
 	print(y)
